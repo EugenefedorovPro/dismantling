@@ -73,6 +73,23 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
   white-space: nowrap;
 }
 
+.name-grid.is-mobile-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.75rem, 5vh, 3rem);
+  margin-top: clamp(2.5rem, 6vh, 4rem);
+}
+
+.name-grid.is-mobile-list .index-name {
+  position: relative;
+  padding-left: 0;
+  max-width: 100%;
+  width: auto;
+  text-align: center;
+  white-space: normal;
+}
+
 .index-name {
   position: relative;
   width: fit-content;
@@ -137,6 +154,7 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
   .name-grid { grid-template-columns: 1fr; gap: 2rem; margin-top: 4rem; }
   .name-grid.is-scattered { margin-top: 3rem; }
   .name-grid.is-scattered .index-name { font-size: clamp(1rem, 4.2vw, 1.3rem); }
+  .name-grid.is-mobile-list .index-name { font-size: clamp(1rem, 4.2vw, 1.3rem); }
   .index-name:nth-child(even) { justify-self: start; }
   .index-name:nth-child(4n + 3) { padding-left: 0; }
   .diptych-grid { grid-template-columns: 1fr; gap: 3rem; }

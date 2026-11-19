@@ -1,14 +1,16 @@
 // Keyboard enhancement for the title page. Normal links work without JavaScript.
 const names = Array.from(document.querySelectorAll(".index-name"));
 
-names.forEach((name, index) => {
+names.forEach((name) => {
   name.addEventListener("keydown", (event) => {
+    const visualOrder = Array.from(document.querySelectorAll(".index-name"));
+    const index = visualOrder.indexOf(name);
     if (event.key === "ArrowDown" || event.key === "ArrowRight") {
       event.preventDefault();
-      names[(index + 1) % names.length].focus();
+      visualOrder[(index + 1) % visualOrder.length].focus();
     } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
       event.preventDefault();
-      names[(index - 1 + names.length) % names.length].focus();
+      visualOrder[(index - 1 + visualOrder.length) % visualOrder.length].focus();
     }
   });
 });
@@ -21,6 +23,7 @@ const activeEffects = new WeakMap();
 function stopDisintegration(link) {
   const effect = activeEffects.get(link);
   if (!effect) return;
+  if (effect.navigating) return;
 
   cancelAnimationFrame(effect.frame);
   effect.canvas.remove();
@@ -28,16 +31,25 @@ function stopDisintegration(link) {
   activeEffects.delete(link);
 }
 
-function disintegrate(link) {
-  if (reducedMotion.matches || activeEffects.has(link)) return;
+function disintegrate(link, onFinished = null) {
+  if (reducedMotion.matches) return false;
+  const currentEffect = activeEffects.get(link);
+  if (currentEffect) {
+    if (onFinished) {
+      currentEffect.navigating = true;
+      currentEffect.onFinished = onFinished;
+      if (currentEffect.completed) onFinished();
+    }
+    return true;
+  }
 
   const label = link.querySelector(".index-name-text");
-  if (!label) return;
+  if (!label) return false;
 
   const bounds = label.getBoundingClientRect();
   const width = Math.ceil(bounds.width);
   const height = Math.ceil(bounds.height);
-  if (!width || !height) return;
+  if (!width || !height) return false;
 
   // Render the exact visible name onto an offscreen canvas, then sample its
   // opaque pixels. The display canvas only paints the sampled dust particles.
@@ -45,7 +57,7 @@ function disintegrate(link) {
   sample.width = width;
   sample.height = height;
   const source = sample.getContext("2d", { willReadFrequently: true });
-  if (!source) return;
+  if (!source) return false;
 
   const style = getComputedStyle(label);
   source.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
@@ -82,14 +94,20 @@ function disintegrate(link) {
   canvas.style.left = `${bounds.left - linkBounds.left - overhang}px`;
   canvas.style.top = `${bounds.top - linkBounds.top - overhang}px`;
   const context = canvas.getContext("2d");
-  if (!context) return;
+  if (!context) return false;
   context.scale(scale, scale);
   context.fillStyle = style.color;
 
   link.append(canvas);
   link.classList.add("is-disintegrating");
 
-  const effect = { canvas, frame: 0 };
+  const effect = {
+    canvas,
+    frame: 0,
+    navigating: Boolean(onFinished),
+    onFinished,
+    completed: false,
+  };
   activeEffects.set(link, effect);
   let start;
 
@@ -110,10 +128,16 @@ function disintegrate(link) {
     }
 
     context.globalAlpha = 1;
-    if (progress < 1) effect.frame = requestAnimationFrame(animate);
+    if (progress < 1) {
+      effect.frame = requestAnimationFrame(animate);
+    } else {
+      effect.completed = true;
+      if (effect.onFinished) effect.onFinished();
+    }
   }
 
   effect.frame = requestAnimationFrame(animate);
+  return true;
 }
 
 names.forEach((link) => {
@@ -129,9 +153,54 @@ reducedMotion.addEventListener("change", () => {
   if (reducedMotion.matches) names.forEach(stopDisintegration);
 });
 
+// On phones, a tap plays the complete disintegration before opening the poem.
+const mobileMode = window.matchMedia("(max-width: 760px)");
+let navigationPending = false;
+
+names.forEach((link) => {
+  link.addEventListener("click", (event) => {
+    if (
+      !mobileMode.matches || reducedMotion.matches || event.defaultPrevented ||
+      event.button !== 0 || event.metaKey || event.ctrlKey ||
+      event.shiftKey || event.altKey
+    ) return;
+
+    event.preventDefault();
+    if (navigationPending) return;
+    navigationPending = true;
+    const href = link.href;
+    const started = disintegrate(link, () => window.location.assign(href));
+    if (!started) window.location.assign(href);
+  });
+});
+
 // Each visit gets a new composition. Place names at random coordinates while
 // keeping them inside the page and separated from each other.
 const nameGrid = document.querySelector(".name-grid");
+let mobileOrderShuffled = false;
+
+function showMobileList() {
+  if (!nameGrid) return;
+  names.forEach(stopDisintegration);
+  nameGrid.classList.remove("is-scattered");
+  nameGrid.classList.add("is-mobile-list");
+  nameGrid.style.height = "";
+  nameGrid.style.visibility = "";
+  names.forEach((link) => {
+    link.style.left = "";
+    link.style.top = "";
+  });
+
+  if (!mobileOrderShuffled) {
+    const shuffled = [...names];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swap = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[swap]] = [shuffled[swap], shuffled[index]];
+    }
+    shuffled.forEach((link) => nameGrid.append(link));
+    mobileOrderShuffled = true;
+  }
+}
 
 function scatterPositions(items, width, height, padding, gap) {
   const placed = [];
@@ -177,11 +246,12 @@ function scatterNames() {
 
   names.forEach(stopDisintegration);
   nameGrid.style.visibility = "hidden";
+  nameGrid.classList.remove("is-mobile-list");
   nameGrid.classList.add("is-scattered");
 
   const width = nameGrid.clientWidth;
   const padding = width < 600 ? 8 : 16;
-  const gap = width < 600 ? 24 : 36;
+  const gap = width < 600 ? 24 : 28;
   const items = names.map((link) => ({
     width: Math.ceil(link.offsetWidth),
     height: Math.ceil(link.offsetHeight),
@@ -191,15 +261,18 @@ function scatterNames() {
 
   const footer = document.querySelector(".site-footer");
   const footerHeight = footer ? footer.offsetHeight : 0;
-  const availableHeight = window.innerHeight - nameGrid.getBoundingClientRect().top - footerHeight;
+  const availableHeight = window.innerHeight - nameGrid.getBoundingClientRect().top - footerHeight - 12;
   const namesPerRow = Math.max(1, Math.floor((width - 2 * padding + gap) / (widest + gap)));
-  const packingHeight = Math.ceil((names.length / namesPerRow) * (tallest + gap) * 1.7);
-  let height = Math.max(320, availableHeight, packingHeight);
+  const packingHeight = Math.ceil((names.length / namesPerRow) * (tallest + gap) * 1.08);
+  let height = Math.max(220, availableHeight, packingHeight);
   let positions = null;
 
-  // A crowded page grows downwards instead of allowing overlapping links.
+  // Try fresh random combinations before making the page taller. This usually
+  // keeps the footer visible at normal desktop zoom for six to eight diptychs.
   for (let attempt = 0; attempt < 24 && !positions; attempt += 1) {
-    positions = scatterPositions(items, width, height, padding, gap);
+    for (let retry = 0; retry < 20 && !positions; retry += 1) {
+      positions = scatterPositions(items, width, height, padding, gap);
+    }
     if (!positions) height += Math.max(100, tallest + gap);
   }
 
@@ -223,20 +296,27 @@ function scatterNames() {
   nameGrid.style.visibility = "";
 }
 
+function arrangeNames() {
+  if (mobileMode.matches) showMobileList();
+  else scatterNames();
+}
+
 if (nameGrid && names.length) {
-  // Wait until font metrics are ready before measuring the link rectangles.
-  document.fonts.ready.then(scatterNames);
+  // Font metrics must be ready before desktop placement is calculated.
+  document.fonts.ready.then(arrangeNames);
 
   let resizeTimer;
   window.addEventListener("resize", () => {
-    if (Math.abs(nameGrid.clientWidth - scatterWidth) < 8) return;
+    if (mobileMode.matches && nameGrid.classList.contains("is-mobile-list")) return;
+    if (!mobileMode.matches && nameGrid.classList.contains("is-scattered") &&
+        Math.abs(nameGrid.clientWidth - scatterWidth) < 8) return;
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(scatterNames, 120);
+    resizeTimer = setTimeout(arrangeNames, 120);
   });
 
   // History navigation can restore a cached page without re-running scripts.
   window.addEventListener("pageshow", (event) => {
-    if (event.persisted) scatterNames();
+    if (event.persisted) arrangeNames();
   });
 }
 
