@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load diptych_markdown %}
+{% block title %}{{ diptych.title }} | ДЕМОНТАЖ{% endblock %}
+{% block content %}
+<main id="content" class="detail-page">
+  <header class="detail-header">
+    <a class="back-link" href="{% url 'index' %}">← ДЕМОНТАЖ</a>
+    <h1 class="detail-title">{{ diptych.title }}</h1>
+  </header>
+
+  <div class="diptych-grid">
+    <article class="poem" aria-label="Стихотворение">
+      <div class="markdown-body poem-body">{{ diptych.poem_markdown|render_markdown }}</div>
+      {% if diptych.poem_date %}<p class="text-date">{{ diptych.poem_date|date:'d.m.Y' }}</p>{% endif %}
+    </article>
+
+    <section class="documents" aria-label="Документы">
+      {% for excerpt in diptych.excerpts.all %}
+        <article class="document">
+          <div class="markdown-body document-body">{{ excerpt.quote_markdown|render_markdown }}</div>
+          <div class="document-source">
+            <a href="{{ excerpt.source_url }}" target="_blank" rel="noopener noreferrer">{{ excerpt.source_title }}</a>
+            {% if excerpt.document_date %}<span>· {{ excerpt.document_date|date:'d.m.Y' }}</span>{% endif %}
+          </div>
+        </article>
+      {% empty %}
+        <p class="empty-document">Документы пока не добавлены.</p>
+      {% endfor %}
+    </section>
+  </div>
+</main>
+{% endblock %}
+

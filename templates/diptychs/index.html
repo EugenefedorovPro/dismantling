@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}ДЕМОНТАЖ{% endblock %}
+{% block content %}
+<main id="content" class="index-page">
+  <h1 class="index-title">ДЕМОНТАЖ</h1>
+  {% if diptychs %}
+    <nav class="name-grid" aria-label="Диптихи">
+      {% for diptych in diptychs %}
+        <a class="index-name" href="{% url 'diptych-detail' slug=diptych.slug %}">{{ diptych.title }}</a>
+      {% endfor %}
+    </nav>
+  {% else %}
+    <p class="empty-state">Пока нет опубликованных диптихов. Добавьте первый через <a href="{% url 'admin:index' %}">Django Admin</a>.</p>
+  {% endif %}
+</main>
+{% endblock %}
+
