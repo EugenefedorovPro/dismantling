@@ -60,6 +60,7 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
 }
 
 .index-name {
+  position: relative;
   width: fit-content;
   max-width: 100%;
   font-size: clamp(1.3rem, 2.7vw, 2.25rem);
@@ -68,6 +69,18 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
   text-underline-offset: .25em;
   transition: color .25s, text-decoration-color .25s;
   animation: reveal 1.5s ease both;
+}
+
+.index-name-text {
+  display: inline-block;
+  transition: opacity .3s ease;
+}
+
+.index-name.is-disintegrating .index-name-text { opacity: .12; }
+
+.index-name-particles {
+  position: absolute;
+  pointer-events: none;
 }
 
 .index-name:nth-child(even) { justify-self: end; }
