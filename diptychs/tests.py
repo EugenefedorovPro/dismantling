@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import AuthorBiography, Diptych, DocumentExcerpt
+from .models import AuthorBiography, Diptych, DocumentExcerpt, ProjectDescription
 from .templatetags.diptych_markdown import render_markdown
 
 
@@ -106,5 +106,26 @@ class AuthorBiographyTests(TestCase):
         )
         response = self.client.get(reverse("author-bio"))
         self.assertContains(response, "<strong>Поэт</strong>", html=True)
+        self.assertContains(response, 'href="https://example.org"')
+        self.assertNotContains(response, "<script>")
+
+
+class ProjectDescriptionTests(TestCase):
+    def test_homepage_title_links_to_project_page(self):
+        response = self.client.get(reverse("index"))
+        self.assertContains(response, '<h1 class="index-title"><a href="/project/">ДЕМОНТАЖ</a></h1>', html=True)
+
+    def test_project_page_shows_placeholder_until_edited_in_admin(self):
+        self.assertFalse(ProjectDescription.objects.exists())
+        response = self.client.get(reverse("project-description"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Описание проекта пока не добавлено.")
+
+    def test_project_page_renders_editable_markdown_safely(self):
+        ProjectDescription.objects.create(
+            body_markdown="**Поэзия** и [проект](https://example.org) <script>alert(1)</script>"
+        )
+        response = self.client.get(reverse("project-description"))
+        self.assertContains(response, "<strong>Поэзия</strong>", html=True)
         self.assertContains(response, 'href="https://example.org"')
         self.assertNotContains(response, "<script>")

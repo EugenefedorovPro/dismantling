@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.db import models
 
-from .models import AuthorBiography, Diptych, DocumentExcerpt
+from .models import AuthorBiography, Diptych, DocumentExcerpt, ProjectDescription
 
 
 class DocumentExcerptInline(admin.StackedInline):
@@ -27,14 +27,23 @@ class DiptychAdmin(admin.ModelAdmin):
     ]
 
 
-@admin.register(AuthorBiography)
-class AuthorBiographyAdmin(admin.ModelAdmin):
+class SingletonMarkdownAdmin(admin.ModelAdmin):
     fields = ("body_markdown",)
     formfield_overrides = {
         models.TextField: {"widget": forms.Textarea(attrs={"rows": 18})}
     }
 
     def has_add_permission(self, request):
-        # The project has one author, so one editable biography is sufficient.
-        return super().has_add_permission(request) and not AuthorBiography.objects.exists()
+        # Each site-wide text page has one editable record.
+        return super().has_add_permission(request) and not self.model.objects.exists()
+
+
+@admin.register(AuthorBiography)
+class AuthorBiographyAdmin(SingletonMarkdownAdmin):
+    pass
+
+
+@admin.register(ProjectDescription)
+class ProjectDescriptionAdmin(SingletonMarkdownAdmin):
+    pass
 

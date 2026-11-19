@@ -58,3 +58,18 @@ class AuthorBiography(models.Model):
     def __str__(self):
         return "Евгений Проскуликов"
 
+
+class ProjectDescription(models.Model):
+    body_markdown = models.TextField(
+        blank=True,
+        help_text="Write the project's description in Markdown.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "project description"
+        verbose_name_plural = "project description"
+
+    def __str__(self):
+        return "ДЕМОНТАЖ"
+
