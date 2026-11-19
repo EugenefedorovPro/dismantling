@@ -129,3 +129,114 @@ reducedMotion.addEventListener("change", () => {
   if (reducedMotion.matches) names.forEach(stopDisintegration);
 });
 
+// Each visit gets a new composition. Place names at random coordinates while
+// keeping them inside the page and separated from each other.
+const nameGrid = document.querySelector(".name-grid");
+
+function scatterPositions(items, width, height, padding, gap) {
+  const placed = [];
+  const positions = new Array(items.length);
+  const largestFirst = items
+    .map((item, index) => ({ ...item, index }))
+    .sort((a, b) => b.width * b.height - a.width * a.height);
+
+  for (const item of largestFirst) {
+    const maxX = width - padding - item.width;
+    const maxY = height - padding - item.height;
+    if (maxX < padding || maxY < padding) return null;
+
+    let position = null;
+    for (let attempt = 0; attempt < 1200; attempt += 1) {
+      const x = padding + Math.random() * (maxX - padding);
+      const y = padding + Math.random() * (maxY - padding);
+      const overlaps = placed.some((other) =>
+        x < other.x + other.width + gap &&
+        x + item.width + gap > other.x &&
+        y < other.y + other.height + gap &&
+        y + item.height + gap > other.y
+      );
+
+      if (!overlaps) {
+        position = { x, y, width: item.width, height: item.height };
+        break;
+      }
+    }
+
+    if (!position) return null;
+    placed.push(position);
+    positions[item.index] = position;
+  }
+
+  return positions;
+}
+
+let scatterWidth = 0;
+
+function scatterNames() {
+  if (!nameGrid || names.length === 0) return;
+
+  names.forEach(stopDisintegration);
+  nameGrid.style.visibility = "hidden";
+  nameGrid.classList.add("is-scattered");
+
+  const width = nameGrid.clientWidth;
+  const padding = width < 600 ? 8 : 16;
+  const gap = width < 600 ? 24 : 36;
+  const items = names.map((link) => ({
+    width: Math.ceil(link.offsetWidth),
+    height: Math.ceil(link.offsetHeight),
+  }));
+  const widest = Math.max(...items.map((item) => item.width));
+  const tallest = Math.max(...items.map((item) => item.height));
+
+  const footer = document.querySelector(".site-footer");
+  const footerHeight = footer ? footer.offsetHeight : 0;
+  const availableHeight = window.innerHeight - nameGrid.getBoundingClientRect().top - footerHeight;
+  const namesPerRow = Math.max(1, Math.floor((width - 2 * padding + gap) / (widest + gap)));
+  const packingHeight = Math.ceil((names.length / namesPerRow) * (tallest + gap) * 1.7);
+  let height = Math.max(320, availableHeight, packingHeight);
+  let positions = null;
+
+  // A crowded page grows downwards instead of allowing overlapping links.
+  for (let attempt = 0; attempt < 24 && !positions; attempt += 1) {
+    positions = scatterPositions(items, width, height, padding, gap);
+    if (!positions) height += Math.max(100, tallest + gap);
+  }
+
+  if (positions) {
+    nameGrid.style.height = `${Math.ceil(height)}px`;
+    positions.forEach((position, index) => {
+      names[index].style.left = `${position.x}px`;
+      names[index].style.top = `${position.y}px`;
+    });
+    scatterWidth = width;
+  } else {
+    // Keep a usable, non-overlapping grid if the viewport is exceptionally narrow.
+    nameGrid.classList.remove("is-scattered");
+    nameGrid.style.height = "";
+    names.forEach((link) => {
+      link.style.left = "";
+      link.style.top = "";
+    });
+  }
+
+  nameGrid.style.visibility = "";
+}
+
+if (nameGrid && names.length) {
+  // Wait until font metrics are ready before measuring the link rectangles.
+  document.fonts.ready.then(scatterNames);
+
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    if (Math.abs(nameGrid.clientWidth - scatterWidth) < 8) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(scatterNames, 120);
+  });
+
+  // History navigation can restore a cached page without re-running scripts.
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) scatterNames();
+  });
+}
+

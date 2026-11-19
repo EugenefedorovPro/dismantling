@@ -59,6 +59,20 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
   margin-top: clamp(4rem, 13vh, 10rem);
 }
 
+/* JavaScript positions each published name freely within this area. */
+.name-grid.is-scattered {
+  display: block;
+  position: relative;
+  margin-top: clamp(3rem, 8vh, 6rem);
+}
+
+.name-grid.is-scattered .index-name {
+  position: absolute;
+  padding-left: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
 .index-name {
   position: relative;
   width: fit-content;
@@ -121,6 +135,8 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
 @media (max-width: 760px) {
   .page-shell { width: min(100% - 2rem, 36rem); }
   .name-grid { grid-template-columns: 1fr; gap: 2rem; margin-top: 4rem; }
+  .name-grid.is-scattered { margin-top: 3rem; }
+  .name-grid.is-scattered .index-name { font-size: clamp(1rem, 4.2vw, 1.3rem); }
   .index-name:nth-child(even) { justify-self: start; }
   .index-name:nth-child(4n + 3) { padding-left: 0; }
   .diptych-grid { grid-template-columns: 1fr; gap: 3rem; }
