@@ -3,10 +3,11 @@
 {% block title %}Евгений Проскуликов | ДЕМОНТАЖ{% endblock %}
 {% block content %}
 <main id="content" class="author-page">
-  <a class="back-link" href="{% url 'index' %}">← ДЕМОНТАЖ</a>
+  {% include 'diptychs/_page_languages.html' %}
   <h1 class="author-title">Евгений Проскуликов</h1>
-  {% if biography and biography.body_markdown %}
-    <article class="author-biography markdown-body">{{ biography.body_markdown|render_markdown }}</article>
+  {% if body_markdown %}
+    {% include 'diptychs/_translation_notice.html' %}
+    <article class="author-biography markdown-body" lang="{{ text_language }}">{{ body_markdown|render_markdown }}</article>
   {% else %}
     <p class="author-empty">Биография пока не добавлена.</p>
   {% endif %}

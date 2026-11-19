@@ -109,6 +109,30 @@ class AuthorBiographyTests(TestCase):
         self.assertContains(response, 'href="https://example.org"')
         self.assertNotContains(response, "<script>")
 
+    def test_biography_switches_between_russian_ukrainian_and_english(self):
+        AuthorBiography.objects.create(
+            body_markdown="Русский текст",
+            body_markdown_uk="**Український текст**",
+            body_markdown_en="**English text**",
+        )
+        for language, expected in [
+            ("ru", "Русский текст"),
+            ("uk", "Український текст"),
+            ("en", "English text"),
+        ]:
+            with self.subTest(language=language):
+                response = self.client.get(reverse("author-bio"), {"lang": language})
+                self.assertContains(response, expected)
+                self.assertContains(response, f'lang="{language}"')
+                self.assertNotContains(response, "Showing the Russian text.")
+
+    def test_missing_english_biography_falls_back_to_original(self):
+        AuthorBiography.objects.create(body_markdown="Текст биографии")
+        response = self.client.get(reverse("author-bio"), {"lang": "en"})
+        self.assertContains(response, "Текст биографии")
+        self.assertContains(response, "English translation is not available yet.")
+        self.assertContains(response, 'class="author-biography markdown-body" lang="ru"')
+
 
 class ProjectDescriptionTests(TestCase):
     def test_homepage_title_links_to_project_page(self):
@@ -129,3 +153,31 @@ class ProjectDescriptionTests(TestCase):
         self.assertContains(response, "<strong>Поэзия</strong>", html=True)
         self.assertContains(response, 'href="https://example.org"')
         self.assertNotContains(response, "<script>")
+
+    def test_project_description_switches_between_all_three_languages(self):
+        ProjectDescription.objects.create(
+            body_markdown="Русский проект",
+            body_markdown_uk="**Український проєкт**",
+            body_markdown_en="**English project**",
+        )
+        for language, expected in [
+            ("ru", "Русский проект"),
+            ("uk", "Український проєкт"),
+            ("en", "English project"),
+        ]:
+            with self.subTest(language=language):
+                response = self.client.get(reverse("project-description"), {"lang": language})
+                self.assertContains(response, expected)
+                self.assertContains(response, f'lang="{language}"')
+
+    def test_missing_ukrainian_project_description_falls_back_to_original(self):
+        ProjectDescription.objects.create(body_markdown="Описание на русском")
+        response = self.client.get(reverse("project-description"), {"lang": "uk"})
+        self.assertContains(response, "Описание на русском")
+        self.assertContains(response, "Український переклад ще не додано.")
+
+    def test_unknown_language_uses_russian(self):
+        ProjectDescription.objects.create(body_markdown="Русский проект", body_markdown_en="English")
+        response = self.client.get(reverse("project-description"), {"lang": "de"})
+        self.assertContains(response, "Русский проект")
+        self.assertNotContains(response, '<article class="author-biography markdown-body" lang="en">')

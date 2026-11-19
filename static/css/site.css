@@ -130,6 +130,10 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
 .empty-state { margin-top: 4rem; color: var(--muted); }
 
 .author-page { padding-top: clamp(2rem, 5vw, 4rem); }
+.page-topline { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.page-languages { display: flex; gap: 1rem; font-family: "IBM Plex Sans", Arial, sans-serif; font-size: .8rem; }
+.page-languages a { text-decoration: none; color: var(--muted); }
+.page-languages a:hover, .page-languages a:focus-visible, .page-languages a[aria-current="page"] { color: var(--ink); text-decoration: underline; text-underline-offset: .25em; }
 .author-title {
   margin: clamp(3rem, 7vw, 7rem) 0 clamp(2rem, 4vw, 4rem);
   font-size: clamp(2.2rem, 5vw, 4.5rem);
@@ -138,6 +142,7 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
 }
 .author-biography { max-width: 46rem; }
 .author-empty { color: var(--muted); }
+.translation-notice { color: var(--muted); font-size: .85rem; }
 
 .detail-page { padding-top: clamp(2rem, 5vw, 4rem); }
 .detail-header { margin-bottom: clamp(3rem, 7vw, 7rem); }

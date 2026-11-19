@@ -49,6 +49,14 @@ class AuthorBiography(models.Model):
         blank=True,
         help_text="Write the author's biography in Markdown.",
     )
+    body_markdown_uk = models.TextField(
+        "Ukrainian (Markdown)", blank=True,
+        help_text="Optional Ukrainian translation of the biography.",
+    )
+    body_markdown_en = models.TextField(
+        "English (Markdown)", blank=True,
+        help_text="Optional English translation of the biography.",
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -63,6 +71,14 @@ class ProjectDescription(models.Model):
     body_markdown = models.TextField(
         blank=True,
         help_text="Write the project's description in Markdown.",
+    )
+    body_markdown_uk = models.TextField(
+        "Ukrainian (Markdown)", blank=True,
+        help_text="Optional Ukrainian translation of the project description.",
+    )
+    body_markdown_en = models.TextField(
+        "English (Markdown)", blank=True,
+        help_text="Optional English translation of the project description.",
     )
     updated_at = models.DateTimeField(auto_now=True)
 

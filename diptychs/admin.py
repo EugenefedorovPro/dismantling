@@ -28,7 +28,11 @@ class DiptychAdmin(admin.ModelAdmin):
 
 
 class SingletonMarkdownAdmin(admin.ModelAdmin):
-    fields = ("body_markdown",)
+    fieldsets = (
+        ("Russian (original)", {"fields": ("body_markdown",)}),
+        ("Ukrainian", {"fields": ("body_markdown_uk",)}),
+        ("English", {"fields": ("body_markdown_en",)}),
+    )
     formfield_overrides = {
         models.TextField: {"widget": forms.Textarea(attrs={"rows": 18})}
     }

@@ -1,0 +1,8 @@
+<div class="page-topline">
+  <a class="back-link" href="{% url 'index' %}">← ДЕМОНТАЖ</a>
+  <nav class="page-languages" aria-label="Language">
+    <a href="?lang=ru" lang="ru" {% if language == 'ru' %}aria-current="page"{% endif %}>RU</a>
+    <a href="?lang=uk" lang="uk" {% if language == 'uk' %}aria-current="page"{% endif %}>UK</a>
+    <a href="?lang=en" lang="en" {% if language == 'en' %}aria-current="page"{% endif %}>EN</a>
+  </nav>
+</div>
