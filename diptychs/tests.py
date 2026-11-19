@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Diptych, DocumentExcerpt
+from .models import AuthorBiography, Diptych, DocumentExcerpt
 from .templatetags.diptych_markdown import render_markdown
 
 
@@ -87,3 +87,24 @@ class IndexTests(TestCase):
         self.assertContains(response, 'class="index-name"', count=8)
         self.assertContains(response, 'class="index-name-text"', count=8)
         self.assertNotContains(response, "Черновик")
+
+
+class AuthorBiographyTests(TestCase):
+    def test_footer_links_to_author_page(self):
+        response = self.client.get(reverse("index"))
+        self.assertContains(response, 'href="/author/"')
+
+    def test_author_page_shows_placeholder_until_edited_in_admin(self):
+        self.assertFalse(AuthorBiography.objects.exists())
+        response = self.client.get(reverse("author-bio"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Биография пока не добавлена.")
+
+    def test_author_page_renders_editable_markdown_safely(self):
+        AuthorBiography.objects.create(
+            body_markdown="**Поэт** и [автор](https://example.org) <script>alert(1)</script>"
+        )
+        response = self.client.get(reverse("author-bio"))
+        self.assertContains(response, "<strong>Поэт</strong>", html=True)
+        self.assertContains(response, 'href="https://example.org"')
+        self.assertNotContains(response, "<script>")

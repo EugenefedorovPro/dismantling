@@ -43,3 +43,18 @@ class DocumentExcerpt(models.Model):
     def __str__(self):
         return self.source_title
 
+
+class AuthorBiography(models.Model):
+    body_markdown = models.TextField(
+        blank=True,
+        help_text="Write the author's biography in Markdown.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "author biography"
+        verbose_name_plural = "author biography"
+
+    def __str__(self):
+        return "Евгений Проскуликов"
+

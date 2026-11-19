@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load diptych_markdown %}
+{% block title %}Евгений Проскуликов | ДЕМОНТАЖ{% endblock %}
+{% block content %}
+<main id="content" class="author-page">
+  <a class="back-link" href="{% url 'index' %}">← ДЕМОНТАЖ</a>
+  <h1 class="author-title">Евгений Проскуликов</h1>
+  {% if biography and biography.body_markdown %}
+    <article class="author-biography markdown-body">{{ biography.body_markdown|render_markdown }}</article>
+  {% else %}
+    <p class="author-empty">Биография пока не добавлена.</p>
+  {% endif %}
+</main>
+{% endblock %}

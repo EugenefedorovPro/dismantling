@@ -1,11 +1,16 @@
 from django.shortcuts import get_object_or_404, render
 
-from .models import Diptych
+from .models import AuthorBiography, Diptych
 
 
 def index(request):
     diptychs = Diptych.objects.filter(is_published=True)
     return render(request, "diptychs/index.html", {"diptychs": diptychs})
+
+
+def author_bio(request):
+    biography = AuthorBiography.objects.first()
+    return render(request, "diptychs/author.html", {"biography": biography})
 
 
 def detail(request, slug):
