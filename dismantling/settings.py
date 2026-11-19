@@ -22,6 +22,11 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+# Only enable this behind a trusted HTTPS reverse proxy that overwrites the
+# X-Forwarded-Proto header. The production Nginx configuration does so.
+if os.getenv("DJANGO_TRUST_PROXY_SSL_HEADER", "0") == "1":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

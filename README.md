@@ -70,3 +70,12 @@ the database volume and its contents. Back up the database separately.
 - Application source code lives in GitHub. Your production texts reside only
   in the SQLite database unless you export or back them up.
 
+## CI/CD for the kant VPS
+
+GitHub Actions can automatically deploy a tested push to `main` to
+`dismantle.rhyme.kyiv.ua` on the `kant` VPS. See
+[deploy/README.md](deploy/README.md) for the one-time setup of production
+environment variables, the dedicated SSH key, GitHub environment secrets,
+Cloudflare DNS, and Nginx. Nothing is deployed until those prerequisites
+are configured and the workflow is merged into `main`.
+
