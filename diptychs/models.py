@@ -14,6 +14,15 @@ class Diptych(models.Model):
     class Meta:
         ordering = ["display_order", "pk"]
 
+    @property
+    def navigation_name(self):
+        """Show only the author's name on the title page."""
+        title = self.title.strip()
+        prefix = "Демонтаж:"
+        if title.casefold().startswith(prefix.casefold()):
+            return title[len(prefix):].strip()
+        return title
+
     def __str__(self):
         return self.title
 

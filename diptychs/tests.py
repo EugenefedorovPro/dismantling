@@ -20,8 +20,18 @@ class DiptychPagesTests(TestCase):
     def test_index_lists_only_published_diptychs(self):
         response = self.client.get(reverse("index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Демонтаж: Чайковский")
+        self.assertContains(response, ">Чайковский</span>")
+        self.assertNotContains(response, "Демонтаж: Чайковский")
         self.assertNotContains(response, "Черновик")
+
+    def test_navigation_name_strips_prefix_without_changing_title(self):
+        self.assertEqual(self.published.navigation_name, "Чайковский")
+        self.assertEqual(self.published.title, "Демонтаж: Чайковский")
+        self.assertEqual(self.draft.navigation_name, "Черновик")
+
+    def test_detail_page_preserves_full_title(self):
+        response = self.client.get(reverse("diptych-detail", kwargs={"slug": "chaikovsky"}))
+        self.assertContains(response, "Демонтаж: Чайковский")
 
     def test_draft_has_no_public_page(self):
         response = self.client.get(reverse("diptych-detail", kwargs={"slug": "draft"}))

@@ -6,7 +6,7 @@
   {% if diptychs %}
     <nav class="name-grid" aria-label="Диптихи">
       {% for diptych in diptychs %}
-        <a class="index-name" href="{% url 'diptych-detail' slug=diptych.slug %}"><span class="index-name-text">{{ diptych.title }}</span></a>
+        <a class="index-name" href="{% url 'diptych-detail' slug=diptych.slug %}"><span class="index-name-text">{{ diptych.navigation_name }}</span></a>
       {% endfor %}
     </nav>
   {% else %}
