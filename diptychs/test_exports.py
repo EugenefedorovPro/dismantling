@@ -1,17 +1,24 @@
-"""Tests for the superuser-only editorial and database downloads."""
+"""Tests for the superuser-only editorial, database, and archive downloads."""
 
+import hashlib
+import io
+import json
 import sqlite3
 import tempfile
+import zipfile
 from contextlib import closing
+from datetime import datetime, timezone
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
 from .exports import export_editorial_texts
-from .models import AuthorBiography, Diptych, DocumentExcerpt, ProjectDescription
+from .exports import backup_archive_media
+from .models import ArchiveCapture, ArchiveSource, AuthorBiography, Diptych, DocumentExcerpt, ProjectDescription
 
 
 class TextExportTests(TestCase):
@@ -76,7 +83,8 @@ class TextExportTests(TestCase):
         response = self.client.get(reverse("admin:index"))
         self.assertContains(response, "Export all texts (.txt)")
         self.assertContains(response, "Backup database (.sqlite3)")
-        self.assertContains(response, 'class="export-link"', count=2)
+        self.assertContains(response, "Backup archive files (.zip)")
+        self.assertContains(response, 'class="export-link"', count=3)
         self.assertContains(response, "css/admin_exports")
 
     def test_export_links_are_not_shown_to_other_staff(self):
@@ -87,6 +95,7 @@ class TextExportTests(TestCase):
         response = self.client.get(reverse("admin:index"))
         self.assertNotContains(response, "Export all texts (.txt)")
         self.assertNotContains(response, "Backup database (.sqlite3)")
+        self.assertNotContains(response, "Backup archive files (.zip)")
 
     def test_staff_without_superuser_access_cannot_download(self):
         staff = get_user_model().objects.create_user(
@@ -96,6 +105,7 @@ class TextExportTests(TestCase):
         for name in (
             "admin:diptychs_diptych_export_texts",
             "admin:diptychs_diptych_backup_sqlite",
+            "admin:diptychs_diptych_backup_archives",
         ):
             with self.subTest(name=name):
                 self.assertEqual(self.client.get(reverse(name)).status_code, 403)
@@ -105,6 +115,7 @@ class TextExportTests(TestCase):
         for name in (
             "admin:diptychs_diptych_export_texts",
             "admin:diptychs_diptych_backup_sqlite",
+            "admin:diptychs_diptych_backup_archives",
         ):
             with self.subTest(name=name):
                 self.assertEqual(self.client.get(reverse(name)).status_code, 302)
@@ -158,3 +169,63 @@ class SqliteBackupTests(TransactionTestCase):
                 self.assertEqual(poem, ("текст стихотворения",))
                 count = backup.execute("SELECT COUNT(*) FROM auth_user").fetchone()[0]
                 self.assertEqual(count, 1)
+
+
+class ArchiveBackupTests(TestCase):
+    def setUp(self):
+        self.media = tempfile.TemporaryDirectory()
+        self.addCleanup(self.media.cleanup)
+        override = override_settings(MEDIA_ROOT=self.media.name)
+        override.enable()
+        self.addCleanup(override.disable)
+
+        superuser = get_user_model().objects.create_superuser(
+            username="editor", password="test-password"
+        )
+        self.client.force_login(superuser)
+        source = ArchiveSource.objects.create(
+            slug="gogol", title="Gogol document", original_url="https://example.org/doc"
+        )
+        self.pdf_data = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF\n"
+        self.capture = ArchiveCapture.objects.create(
+            source=source,
+            kind=ArchiveCapture.Kind.ORIGINAL_PDF,
+            captured_at=datetime(2026, 11, 20, tzinfo=timezone.utc),
+            file=SimpleUploadedFile("document.pdf", self.pdf_data),
+        )
+
+    def test_archives_download_contains_original_files_and_checksums(self):
+        # Unreferenced files are part of a complete archive-media backup too.
+        extra = Path(self.media.name) / "extra.txt"
+        extra.write_text("Another archived file", encoding="utf-8")
+
+        response = self.client.get(reverse("admin:diptychs_diptych_backup_archives"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
+        self.assertIn('.zip"', response["Content-Disposition"])
+        self.assertEqual(response["Content-Type"], "application/zip")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        self.assertIn("no-store", response["Cache-Control"])
+
+        with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as backup:
+            name = f"archive-media/{self.capture.file.name}"
+            self.assertEqual(backup.read(name), self.pdf_data)
+            self.assertEqual(backup.read("archive-media/extra.txt"), b"Another archived file")
+            manifest = json.loads(backup.read("archive-manifest.json"))
+            self.assertEqual(manifest["format"], "dismantling-archive-backup-v1")
+            entry = next(file for file in manifest["files"] if file["path"] == name)
+            self.assertEqual(entry["sha256"], hashlib.sha256(self.pdf_data).hexdigest())
+            self.assertEqual(entry["bytes"], len(self.pdf_data))
+
+    def test_backup_rejects_modified_archival_file(self):
+        path = Path(self.media.name) / self.capture.file.name
+        path.write_bytes(b"modified")
+        with self.assertRaisesRegex(ValueError, "checksum or size mismatch"):
+            backup_archive_media()
+
+    def test_backup_rejects_missing_archival_file(self):
+        path = Path(self.media.name) / self.capture.file.name
+        path.unlink()
+        with self.assertRaisesRegex(FileNotFoundError, "missing"):
+            backup_archive_media()

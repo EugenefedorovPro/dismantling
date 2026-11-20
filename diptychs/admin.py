@@ -2,11 +2,11 @@ from django import forms
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
 from django.db import models
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.urls import path
 from django.utils import timezone
 
-from .exports import backup_sqlite_database, export_editorial_texts
+from .exports import backup_archive_media, backup_sqlite_database, export_editorial_texts
 from .models import (
     ArchiveCapture,
     ArchiveSource,
@@ -51,6 +51,11 @@ class DiptychAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.backup_sqlite),
                 name="diptychs_diptych_backup_sqlite",
             ),
+            path(
+                "backup-archives/",
+                self.admin_site.admin_view(self.backup_archives),
+                name="diptychs_diptych_backup_archives",
+            ),
         ]
         return export_urls + super().get_urls()
 
@@ -78,6 +83,17 @@ class DiptychAdmin(admin.ModelAdmin):
         filename = f"dismantling-{timezone.localdate():%Y-%m-%d}.sqlite3"
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         response["Cache-Control"] = "no-store"
+        return response
+
+    def backup_archives(self, request):
+        self._require_superuser(request)
+        archive = backup_archive_media()
+        filename = f"dismantling-archive-files-{timezone.localdate():%Y-%m-%d}.zip"
+        response = FileResponse(
+            archive, as_attachment=True, filename=filename, content_type="application/zip"
+        )
+        response["Cache-Control"] = "no-store"
+        response["X-Content-Type-Options"] = "nosniff"
         return response
 
 
