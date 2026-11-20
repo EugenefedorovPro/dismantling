@@ -20,15 +20,19 @@ names.forEach((name) => {
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const activeEffects = new WeakMap();
 
-function stopDisintegration(link) {
+function resetDisintegration(link) {
   const effect = activeEffects.get(link);
-  if (!effect) return;
-  if (effect.navigating) return;
-
-  cancelAnimationFrame(effect.frame);
-  effect.canvas.remove();
+  if (effect) {
+    cancelAnimationFrame(effect.frame);
+    effect.canvas.remove();
+    activeEffects.delete(link);
+  }
   link.classList.remove("is-disintegrating");
-  activeEffects.delete(link);
+}
+
+function stopDisintegration(link) {
+  if (activeEffects.get(link)?.navigating) return;
+  resetDisintegration(link);
 }
 
 function disintegrate(link, onFinished = null) {
@@ -316,7 +320,11 @@ if (nameGrid && names.length) {
 
   // History navigation can restore a cached page without re-running scripts.
   window.addEventListener("pageshow", (event) => {
-    if (event.persisted) arrangeNames();
+    if (event.persisted) {
+      navigationPending = false;
+      names.forEach(resetDisintegration);
+      arrangeNames();
+    }
   });
 }
 
