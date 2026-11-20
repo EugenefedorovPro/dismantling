@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Архив: {{ source.title }} | ДЕМОНТАЖ{% endblock %}
+{% block content %}
+<main id="content" class="archive-page">
+  <a class="back-link" href="{% url 'index' %}">← ДЕМОНТАЖ</a>
+  <p class="archive-eyebrow">АРХИВ ИСТОЧНИКОВ</p>
+  <h1>{{ source.title }}</h1>
+  <p>Независимая архивная копия публикации. Этот сайт не является официальным источником документа.</p>
+  {% if not source.is_public %}<p class="archive-private">Не опубликовано. Доступно только администратору.</p>{% endif %}
+  <dl class="archive-metadata">
+    <dt>Оригинальный источник</dt>
+    <dd><a href="{{ source.original_url }}" rel="noopener noreferrer" target="_blank">{{ source.original_url }}</a></dd>
+  </dl>
+  <h2>Сохранённые копии</h2>
+  <ul class="archive-captures">
+    {% for capture in captures %}
+      <li>
+        <strong>{{ capture.get_kind_display }}</strong>
+        <span>{{ capture.captured_at|date:'d.m.Y H:i T' }}</span>
+        <a href="{% url 'archive-download' source.slug capture.pk %}">Скачать</a>
+        <small>SHA-256: <code>{{ capture.sha256 }}</code></small>
+      </li>
+    {% endfor %}
+  </ul>
+</main>
+{% endblock %}

@@ -11,6 +11,7 @@ services:
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
       DJANGO_TRUST_PROXY_SSL_HEADER: "${DJANGO_TRUST_PROXY_SSL_HEADER:-0}"
       DJANGO_DB_PATH: /data/db.sqlite3
+      DJANGO_MEDIA_ROOT: /data/archive-media
     volumes:
       - sqlite_data:/data
     command: >-

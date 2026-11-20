@@ -7,13 +7,21 @@ from django.urls import path
 from django.utils import timezone
 
 from .exports import backup_sqlite_database, export_editorial_texts
-from .models import AuthorBiography, Diptych, DocumentExcerpt, ProjectDescription
+from .models import (
+    ArchiveCapture,
+    ArchiveSource,
+    AuthorBiography,
+    Diptych,
+    DocumentExcerpt,
+    ProjectDescription,
+)
 
 
 class DocumentExcerptInline(admin.StackedInline):
     model = DocumentExcerpt
     extra = 1
     ordering = ("display_order", "pk")
+    autocomplete_fields = ("archive_source",)
     formfield_overrides = {
         models.TextField: {"widget": forms.Textarea(attrs={"rows": 12})}
     }
@@ -96,4 +104,55 @@ class AuthorBiographyAdmin(SingletonMarkdownAdmin):
 @admin.register(ProjectDescription)
 class ProjectDescriptionAdmin(SingletonMarkdownAdmin):
     pass
+
+
+class ArchiveCaptureInline(admin.TabularInline):
+    model = ArchiveCapture
+    extra = 0
+    can_delete = False
+    fields = ("kind", "captured_at", "sha256", "byte_size")
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ArchiveSource)
+class ArchiveSourceAdmin(admin.ModelAdmin):
+    list_display = ("title", "slug", "is_public", "capture_count")
+    list_filter = ("is_public",)
+    search_fields = ("title", "slug", "original_url")
+    fields = ("slug", "title", "original_url", "is_public")
+    inlines = [ArchiveCaptureInline]
+
+    def capture_count(self, obj):
+        return obj.captures.count()
+
+    capture_count.short_description = "Copies"
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ArchiveCapture)
+class ArchiveCaptureAdmin(admin.ModelAdmin):
+    list_display = ("source", "kind", "captured_at", "byte_size", "sha256")
+    list_filter = ("kind", "captured_at")
+    autocomplete_fields = ("source",)
+    fields = ("source", "kind", "captured_at", "file")
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
