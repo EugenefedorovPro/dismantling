@@ -1,0 +1,38 @@
+#project-exports .export-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 12px;
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+#project-exports .export-row:last-child {
+  border-bottom: 0;
+}
+
+#project-exports .export-link {
+  box-sizing: border-box;
+  flex: 0 0 220px;
+  max-width: 100%;
+  padding: 9px 12px;
+  border-radius: 4px;
+  background: var(--button-bg);
+  color: var(--button-fg);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+#project-exports .export-link:hover,
+#project-exports .export-link:focus {
+  background: var(--button-hover-bg);
+}
+
+#project-exports .export-description {
+  flex: 1 1 240px;
+  min-width: 0;
+  line-height: 1.5;
+  color: var(--body-quiet-color);
+}

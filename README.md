@@ -34,6 +34,20 @@ In Django Admin, open **Diptychs**, create a record, enter a Latin URL slug,
 paste your Markdown poem, add one or more documentary excerpts (with URLs),
 and select **Is published**. The title page and diptych page update when saved.
 
+### Export texts or back up the database
+
+Log in to the Django Admin **homepage** as a superuser. The **Project exports**
+section has two one-click downloads for the entire site:
+
+- **Export all texts (.txt)**: a UTF-8 text file containing all poems (including
+  unpublished drafts), document quotations and sources, author biographies,
+  project descriptions, and available translations.
+- **Backup database (.sqlite3)**: a consistent copy of the entire SQLite
+  database, including accounts and other Django tables, made using SQLite's
+  online backup API. Treat this file as sensitive and store it securely.
+
+Both downloads are restricted to superusers. Neither changes the live database.
+
 The local port is bound to `127.0.0.1`, so the test site is not exposed to your
 LAN. Change `WEB_PORT` in `.env` to use another port (copy `.env.example`
 to `.env` first). You do **not** need an `.env` file for local testing.
