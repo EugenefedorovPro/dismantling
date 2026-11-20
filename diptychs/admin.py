@@ -1,7 +1,12 @@
 from django import forms
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied
 from django.db import models
+from django.http import HttpResponse
+from django.urls import path
+from django.utils import timezone
 
+from .exports import backup_sqlite_database, export_editorial_texts
 from .models import AuthorBiography, Diptych, DocumentExcerpt, ProjectDescription
 
 
@@ -16,6 +21,7 @@ class DocumentExcerptInline(admin.StackedInline):
 
 @admin.register(Diptych)
 class DiptychAdmin(admin.ModelAdmin):
+    change_list_template = "admin/diptychs/diptych/change_list.html"
     list_display = ("title", "slug", "poem_date", "display_order", "is_published")
     list_editable = ("display_order", "is_published")
     list_filter = ("is_published",)
@@ -25,6 +31,47 @@ class DiptychAdmin(admin.ModelAdmin):
         (None, {"fields": ("title", "slug", "poem_date", "poem_markdown")}),
         ("Publication", {"fields": ("display_order", "is_published")}),
     ]
+
+    def get_urls(self):
+        export_urls = [
+            path(
+                "export-texts/",
+                self.admin_site.admin_view(self.export_texts),
+                name="diptychs_diptych_export_texts",
+            ),
+            path(
+                "backup-sqlite/",
+                self.admin_site.admin_view(self.backup_sqlite),
+                name="diptychs_diptych_backup_sqlite",
+            ),
+        ]
+        return export_urls + super().get_urls()
+
+    @staticmethod
+    def _require_superuser(request):
+        # The database includes Django user accounts and session data.
+        if not request.user.is_superuser:
+            raise PermissionDenied
+
+    def export_texts(self, request):
+        self._require_superuser(request)
+        response = HttpResponse(
+            export_editorial_texts(), content_type="text/plain; charset=utf-8"
+        )
+        filename = f"dismantling-texts-{timezone.localdate():%Y-%m-%d}.txt"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response["Cache-Control"] = "no-store"
+        return response
+
+    def backup_sqlite(self, request):
+        self._require_superuser(request)
+        response = HttpResponse(
+            backup_sqlite_database(), content_type="application/vnd.sqlite3"
+        )
+        filename = f"dismantling-{timezone.localdate():%Y-%m-%d}.sqlite3"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response["Cache-Control"] = "no-store"
+        return response
 
 
 class SingletonMarkdownAdmin(admin.ModelAdmin):

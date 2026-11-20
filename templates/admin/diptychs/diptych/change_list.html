@@ -1,0 +1,9 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+  {% if request.user.is_superuser %}
+    <li><a href="{% url 'admin:diptychs_diptych_export_texts' %}">Export all texts (.txt)</a></li>
+    <li><a href="{% url 'admin:diptychs_diptych_backup_sqlite' %}">Backup database (.sqlite3)</a></li>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}
