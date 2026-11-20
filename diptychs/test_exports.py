@@ -73,6 +73,8 @@ class TextExportTests(TestCase):
         response = self.client.get(reverse("admin:index"))
         self.assertContains(response, "Export all texts (.txt)")
         self.assertContains(response, "Backup database (.sqlite3)")
+        self.assertContains(response, 'class="export-link"', count=2)
+        self.assertContains(response, "css/admin_exports")
 
     def test_export_links_are_not_shown_to_other_staff(self):
         staff = get_user_model().objects.create_user(
