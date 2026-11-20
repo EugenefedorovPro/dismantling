@@ -1,6 +1,10 @@
-from django.shortcuts import get_object_or_404, render
+from pathlib import Path
 
-from .models import AuthorBiography, Diptych, ProjectDescription
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404, render
+from django.views.decorators.http import require_GET
+
+from .models import ArchiveCapture, ArchiveSource, AuthorBiography, Diptych, ProjectDescription
 
 
 LANGUAGE_FIELDS = {
@@ -48,9 +52,46 @@ def project_description(request):
 
 def detail(request, slug):
     diptych = get_object_or_404(
-        Diptych.objects.prefetch_related("excerpts"),
+        Diptych.objects.prefetch_related("excerpts__archive_source__captures"),
         slug=slug,
         is_published=True,
     )
     return render(request, "diptychs/detail.html", {"diptych": diptych})
+
+
+def _visible_archive_or_404(request, slug):
+    source = get_object_or_404(ArchiveSource, slug=slug)
+    if not source.is_public and not request.user.is_superuser:
+        raise Http404("Archive not published")
+    return source
+
+
+@require_GET
+def archive_detail(request, slug):
+    source = _visible_archive_or_404(request, slug)
+    captures = source.captures.all()
+    if not captures.exists():
+        raise Http404("No archive captures")
+    response = render(
+        request, "diptychs/archive.html", {"source": source, "captures": captures}
+    )
+    response["Cache-Control"] = "private, no-store" if not source.is_public else "public, max-age=300"
+    return response
+
+
+@require_GET
+def archive_download(request, slug, capture_id):
+    source = _visible_archive_or_404(request, slug)
+    capture = get_object_or_404(ArchiveCapture, pk=capture_id, source=source)
+    try:
+        opened = capture.file.open("rb")
+    except (OSError, FileNotFoundError):
+        raise Http404("Archive file unavailable") from None
+    name = f"{slug}-{capture.pk}{Path(capture.file.name).suffix.lower()}"
+    response = FileResponse(
+        opened, as_attachment=True, filename=name, content_type="application/octet-stream"
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store" if not source.is_public else "public, max-age=300"
+    return response
 

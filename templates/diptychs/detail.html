@@ -22,6 +22,21 @@
             <a href="{{ excerpt.source_url }}" target="_blank" rel="noopener noreferrer">{{ excerpt.source_title }}</a>
             {% if excerpt.document_date %}<span>· {{ excerpt.document_date|date:'d.m.Y' }}</span>{% endif %}
           </div>
+          {% if excerpt.archive_source and excerpt.archive_source.is_public %}
+            {% with archived=excerpt.archive_source %}
+              {% with first_capture=archived.captures.first %}
+                {% if first_capture %}
+                  <nav class="document-archive-links" aria-label="Архив документа">
+                    <a href="{{ excerpt.source_url }}" target="_blank" rel="noopener noreferrer">Источник</a>
+                    <span aria-hidden="true">·</span>
+                    <a href="{% url 'archive-detail' archived.slug %}">Архивная копия</a>
+                    <span aria-hidden="true">·</span>
+                    <a href="{% url 'archive-download' archived.slug first_capture.pk %}">Скачать документ</a>
+                  </nav>
+                {% endif %}
+              {% endwith %}
+            {% endwith %}
+          {% endif %}
         </article>
       {% empty %}
         <p class="empty-document">Документы пока не добавлены.</p>

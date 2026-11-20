@@ -48,6 +48,51 @@ section has two one-click downloads for the entire site:
 
 Both downloads are restricted to superusers. Neither changes the live database.
 
+### Preserving original source documents
+
+The site can preserve a dated copy of each cited documentary source separately
+from the poem and its quotation. The archive retains the source URL, capture
+date, original file, and a SHA-256 checksum. Copies are immutable: capturing a
+new version adds a new file rather than overwriting an old one.
+
+Every imported source starts **private**. A superuser can review it at
+`/archive/<slug>/` while logged in, and then enable **Is public** under
+**Archive sources** in Django Admin after checking copyright and fidelity.
+Only public archives appear beneath the quoted documents as:
+
+`Источник · Архивная копия · Скачать документ`
+
+Archive files are stored separately from SQLite, in `/data/archive-media` when
+using Docker Compose. The **Backup database (.sqlite3)** button does **not**
+contain archived PDF, HTML, or image files. Back up both the SQLite database
+and `/data/archive-media` off the server.
+
+To prepare a collection from an editorial TXT export, run the optional capture
+helper on an internet-connected machine with Python, WeasyPrint and
+BeautifulSoup installed:
+
+```bash
+python tools/capture_archives.py dismantling-texts.txt source-archives.zip
+```
+
+The helper downloads original PDFs byte-for-byte. For webpages it stores the
+original HTML response and a readable PDF rendering. The rendered PDF is **not**
+a pixel-exact browser screenshot; external scripts are not executed and
+third-party resources are not fetched. Keep the original HTML as supporting
+evidence. The source may still change before capture, so the capture timestamp
+is not the original publication timestamp.
+
+Transfer the ZIP to the server's persistent `/data` directory and import it:
+
+```bash
+docker compose exec web python manage.py import_archive_bundle /data/source-archives.zip --dry-run
+docker compose exec web python manage.py import_archive_bundle /data/source-archives.zip
+```
+
+The import matches the original URL and diptych slug against the **existing**
+editorial database, verifies each SHA-256 digest, and skips identical copies
+on repeated imports. It never modifies poems, quotations, or source URLs.
+
 The local port is bound to `127.0.0.1`, so the test site is not exposed to your
 LAN. Change `WEB_PORT` in `.env` to use another port (copy `.env.example`
 to `.env` first). You do **not** need an `.env` file for local testing.
@@ -82,7 +127,8 @@ the database volume and its contents. Back up the database separately.
   configure `DJANGO_ALLOWED_HOSTS`, HTTPS/reverse-proxy settings, and database
   backups. The HTTPS reverse proxy (Nginx) is **not** included here.
 - Application source code lives in GitHub. Your production texts reside only
-  in the SQLite database unless you export or back them up.
+  in the SQLite database unless you export or back them up. Archive files, if
+  enabled, live alongside the database on the persistent data volume.
 
 ## CI/CD for the kant VPS
 
