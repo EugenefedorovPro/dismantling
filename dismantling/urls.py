@@ -9,6 +9,7 @@ urlpatterns = [
     path("", views.index, name="index"),
     path("author/", views.author_bio, name="author-bio"),
     path("project/", views.project_description, name="project-description"),
-    path("<slug:slug>/", views.detail, name="diptych-detail"),
+    path("diptych/<slug:slug>/", views.detail, name="diptych-detail"),
+    path("<slug:slug>/", views.detail),
 ]
 

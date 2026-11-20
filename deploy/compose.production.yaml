@@ -1,0 +1,14 @@
+name: dismantling
+
+services:
+  web:
+    image: ${DISMANTLING_IMAGE:-dismantling-web:release}
+    pull_policy: never
+    environment:
+      DISMANTLING_DEPLOYMENT_BACKUP: /data/.deploy-backup.sqlite3
+    volumes:
+      - type: bind
+        source: ${DISMANTLING_DATA_DIR:-./data}
+        target: /data
+        bind:
+          create_host_path: false

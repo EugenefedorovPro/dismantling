@@ -1,3 +1,6 @@
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -33,6 +36,23 @@ class DiptychPagesTests(TestCase):
         response = self.client.get(reverse("diptych-detail", kwargs={"slug": "chaikovsky"}))
         self.assertContains(response, "Демонтаж: Чайковский")
 
+    def test_legacy_detail_urls_preserve_publication_rules(self):
+        self.assertContains(self.client.get("/chaikovsky/"), "Демонтаж: Чайковский")
+        self.assertEqual(self.client.get("/draft/").status_code, 404)
+
+    def test_diptych_links_work_for_slugs_used_by_site_routes(self):
+        for slug in ("admin", "author", "project"):
+            Diptych.objects.create(
+                title=f"Reserved slug {slug}", slug=slug, poem_markdown="Text", is_published=True
+            )
+
+        index_page = self.client.get(reverse("index"))
+        for slug in ("admin", "author", "project"):
+            with self.subTest(slug=slug):
+                url = f"/diptych/{slug}/"
+                self.assertContains(index_page, f'href="{url}"')
+                self.assertContains(self.client.get(url), f"Reserved slug {slug}")
+
     def test_draft_has_no_public_page(self):
         response = self.client.get(reverse("diptych-detail", kwargs={"slug": "draft"}))
         self.assertEqual(response.status_code, 404)
@@ -56,6 +76,23 @@ class DiptychPagesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertLess(response.content.index(b"Student letter"), response.content.index(b"Council decision"))
         self.assertContains(response, "Первая строка<br")
+
+    def test_document_markup_uses_each_excerpts_language(self):
+        for language, quotation in (
+            (DocumentExcerpt.Language.UKRAINIAN, "Українська цитата"),
+            (DocumentExcerpt.Language.RUSSIAN, "Русская цитата"),
+            (DocumentExcerpt.Language.ENGLISH, "English quotation"),
+            (DocumentExcerpt.Language.UNSPECIFIED, "Quotation with unspecified language"),
+        ):
+            DocumentExcerpt.objects.create(
+                diptych=self.published, source_title="Source",
+                source_url="https://example.org/source", quote_markdown=quotation,
+                language=language,
+            )
+
+        response = self.client.get(reverse("diptych-detail", kwargs={"slug": self.published.slug}))
+        for language in ("uk", "ru", "en", "und"):
+            self.assertContains(response, f'<article class="document" lang="{language}">')
 
     def test_markdown_escapes_html_and_unsafe_links(self):
         rendered = str(render_markdown('<script>alert(1)</script>\n[bad](javascript:alert(1))'))
@@ -87,6 +124,21 @@ class IndexTests(TestCase):
         self.assertContains(response, 'class="index-name"', count=8)
         self.assertContains(response, 'class="index-name-text"', count=8)
         self.assertNotContains(response, "Черновик")
+
+    def test_public_pages_stay_available_while_admin_is_paused(self):
+        with TemporaryDirectory() as directory:
+            backup = Path(directory) / "deploy.sqlite3"
+            with self.settings(DEPLOYMENT_BACKUP=backup):
+                backup.touch()
+                response = self.client.get(reverse("admin:index"))
+                self.assertEqual(response.status_code, 503)
+                self.assertIn("no-store", response.headers["Cache-Control"])
+                self.assertEqual(self.client.get(reverse("index")).status_code, 200)
+                backup.unlink()
+                self.assertRedirects(
+                    self.client.get(reverse("admin:index")),
+                    f'{reverse("admin:login")}?next={reverse("admin:index")}',
+                )
 
 
 class AuthorBiographyTests(TestCase):

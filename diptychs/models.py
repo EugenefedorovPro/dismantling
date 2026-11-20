@@ -28,12 +28,19 @@ class Diptych(models.Model):
 
 
 class DocumentExcerpt(models.Model):
+    class Language(models.TextChoices):
+        UKRAINIAN = "uk", "Ukrainian"
+        RUSSIAN = "ru", "Russian"
+        ENGLISH = "en", "English"
+        UNSPECIFIED = "und", "Unspecified"
+
     diptych = models.ForeignKey(
         Diptych, related_name="excerpts", on_delete=models.CASCADE
     )
     source_title = models.CharField(max_length=300)
     source_url = models.URLField(max_length=1000)
     quote_markdown = models.TextField(help_text="Verbatim quotation in Markdown.")
+    language = models.CharField(max_length=3, choices=Language, default=Language.UKRAINIAN)
     document_date = models.DateField(blank=True, null=True)
     display_order = models.PositiveSmallIntegerField(default=0)
 

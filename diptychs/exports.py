@@ -6,7 +6,7 @@ from contextlib import closing
 from io import StringIO
 from pathlib import Path
 
-from django.db import connections
+from django.db import connections, transaction
 
 from .models import AuthorBiography, Diptych, ProjectDescription
 
@@ -20,8 +20,9 @@ def _write_text(output, label, value):
     output.write("\n")
 
 
+@transaction.atomic
 def export_editorial_texts():
-    """Return all editorial content, including drafts and translations, as TXT."""
+    """Return all editorial content as TXT from one database snapshot."""
     output = StringIO()
     output.write("ДЕМОНТАЖ - EDITORIAL TEXT EXPORT\n\n")
 
@@ -37,6 +38,7 @@ def export_editorial_texts():
         for excerpt in diptych.excerpts.all():
             output.write(f"Document: {excerpt.source_title}\n")
             output.write(f"Source URL: {excerpt.source_url}\n")
+            output.write(f"Document language: {excerpt.language}\n")
             output.write(f"Document date: {excerpt.document_date or ''}\n")
             output.write(f"Display order: {excerpt.display_order}\n\n")
             _write_text(output, "Quotation (Markdown)", excerpt.quote_markdown)
