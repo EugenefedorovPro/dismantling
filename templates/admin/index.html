@@ -1,0 +1,26 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+  {% if request.user.is_superuser %}
+    <div class="module" id="project-exports">
+      <table>
+        <caption>PROJECT EXPORTS</caption>
+        <tbody>
+          <tr>
+            <th scope="row">
+              <a href="{% url 'admin:diptychs_diptych_export_texts' %}">Export all texts (.txt)</a>
+            </th>
+            <td>Poems, documentary excerpts, biography, project description, and available translations, including drafts.</td>
+          </tr>
+          <tr>
+            <th scope="row">
+              <a href="{% url 'admin:diptychs_diptych_backup_sqlite' %}">Backup database (.sqlite3)</a>
+            </th>
+            <td>Complete SQLite backup, including accounts and other site data.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

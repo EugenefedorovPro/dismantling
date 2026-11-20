@@ -69,10 +69,19 @@ class TextExportTests(TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, text)
 
-    def test_admin_list_has_one_click_export_links(self):
-        response = self.client.get(reverse("admin:diptychs_diptych_changelist"))
+    def test_admin_homepage_has_one_click_export_links(self):
+        response = self.client.get(reverse("admin:index"))
         self.assertContains(response, "Export all texts (.txt)")
         self.assertContains(response, "Backup database (.sqlite3)")
+
+    def test_export_links_are_not_shown_to_other_staff(self):
+        staff = get_user_model().objects.create_user(
+            username="staff", password="test-password", is_staff=True
+        )
+        self.client.force_login(staff)
+        response = self.client.get(reverse("admin:index"))
+        self.assertNotContains(response, "Export all texts (.txt)")
+        self.assertNotContains(response, "Backup database (.sqlite3)")
 
     def test_staff_without_superuser_access_cannot_download(self):
         staff = get_user_model().objects.create_user(

@@ -21,7 +21,6 @@ class DocumentExcerptInline(admin.StackedInline):
 
 @admin.register(Diptych)
 class DiptychAdmin(admin.ModelAdmin):
-    change_list_template = "admin/diptychs/diptych/change_list.html"
     list_display = ("title", "slug", "poem_date", "display_order", "is_published")
     list_editable = ("display_order", "is_published")
     list_filter = ("is_published",)

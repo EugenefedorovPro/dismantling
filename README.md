@@ -36,8 +36,8 @@ and select **Is published**. The title page and diptych page update when saved.
 
 ### Export texts or back up the database
 
-Log in to Django Admin as a superuser and open **Diptychs**. At the top of the
-list are two one-click downloads, available even if no diptychs are selected:
+Log in to the Django Admin **homepage** as a superuser. The **Project exports**
+section has two one-click downloads for the entire site:
 
 - **Export all texts (.txt)**: a UTF-8 text file containing all poems (including
   unpublished drafts), document quotations and sources, author biographies,
