@@ -16,7 +16,7 @@
 
     <section class="documents" aria-label="Документы">
       {% for excerpt in diptych.excerpts.all %}
-        <article class="document">
+        <article class="document" lang="{{ excerpt.language }}">
           <div class="markdown-body document-body">{{ excerpt.quote_markdown|render_markdown }}</div>
           <div class="document-source">
             <a href="{{ excerpt.source_url }}" target="_blank" rel="noopener noreferrer">{{ excerpt.source_title }}</a>

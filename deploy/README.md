@@ -7,7 +7,7 @@ deploy until it has been merged into `main` and the setup below is completed.
 
 ## 1. Prepare the VPS once
 
-Install Docker Engine and the Docker Compose plugin if they are not installed.
+Install Docker Engine, the Docker Compose plugin, and Python 3 if needed.
 The `kant` account must be able to run `docker compose` without a password
 prompt. Docker group membership effectively grants root access, so protect
 the deploy key and the repository's `main` branch accordingly.
@@ -37,10 +37,34 @@ Never commit `.env`, share the secret in chat, or put it in the workflow.
 The workflow deliberately refuses to deploy without `.env` and
 `DJANGO_DEBUG=0`.
 
-The existing Compose service binds `127.0.0.1:8088` and stores SQLite in the
-named Docker volume `sqlite_data`, not inside the Git checkout. Rebuilding
-or pulling code does **not** erase that volume. Do not run `docker compose
-down -v`, and arrange an independent SQLite backup before going live.
+Production binds `127.0.0.1:8088` and uses the host database at
+`/opt/apps/dismantling/data/db.sqlite3`. The deploy workflow selects
+`deploy/compose.production.yaml` explicitly. Use it with the base file for
+production Compose commands. The base file on its own uses a named volume for
+local development.
+
+For an existing deployment, verify the running container's mount before merging
+the workflow. The command below reads the current mount without restarting it.
+
+```sh
+docker inspect "$(docker compose ps -q web)" \
+  --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Type}} {{.Source}}{{end}}{{end}}'
+```
+
+The expected result is `bind /opt/apps/dismantling/data`. If the running app
+uses a named volume, make a verified SQLite backup from that app and migrate the
+current database to the bind mount before deploying. The workflow checks the
+existing container's mount and stops when it differs.
+
+On a new site with no database to preserve, initialize SQLite once from a
+checkout containing the production override.
+
+```sh
+mkdir -p data
+docker compose -f docker-compose.yaml -f deploy/compose.production.yaml build web
+docker compose -f docker-compose.yaml -f deploy/compose.production.yaml \
+  run --rm --no-deps web python manage.py migrate --noinput
+```
 
 ## 2. Configure Cloudflare and Nginx
 
@@ -111,8 +135,20 @@ automatically:
 
 1. Installs Python dependencies and runs Django checks and tests on GitHub.
 2. Connects to the VPS over SSH (strict host-key checking).
-3. Fast-forwards its local `main` checkout without discarding uncommitted work.
-4. Builds and starts the Compose service, waiting until it is healthy.
+3. Verifies the run's tested SHA against the current GitHub `main` and builds
+   from an archive of that exact commit.
+4. Verifies the SQLite mount, saves a database snapshot, and starts the candidate
+   image. Admin edits are paused while Compose checks the new container.
+5. If startup fails, restores the database snapshot and starts the previous image.
+
+The server's Git working tree is independent of the release. Update it with
+`git pull --ff-only` when you need current configuration files for manual
+maintenance.
+
+GitHub reports a failed release even when rollback succeeds. If the release is
+interrupted and `data/.deploy-backup.sqlite3` remains, the next deploy stops
+before changing the service. Check the running image and the saved database
+before clearing the interrupted deployment state.
 
 Watch the result under **GitHub → Actions → Test and deploy Dismantling**.
 The Django site should be accessible at `https://dismantle.rhyme.kyiv.ua/`.
@@ -121,7 +157,8 @@ If you need to create an Admin user after the first deployment:
 
 ```sh
 cd /opt/apps/dismantling
-docker compose exec web python manage.py createsuperuser
+docker compose -f docker-compose.yaml -f deploy/compose.production.yaml \
+  exec web python manage.py createsuperuser
 ```
 
 Run `docker compose logs -f web` on the VPS to investigate application errors.

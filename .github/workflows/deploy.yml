@@ -16,6 +16,9 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
@@ -34,6 +37,22 @@ jobs:
           python manage.py collectstatic --noinput
           python manage.py test
 
+      - name: Check production deployment
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: "local-ci-only-dismantling-container-test-key"
+          WEB_PORT: "18088"
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s deploy
+          export DISMANTLING_DATA_DIR="$RUNNER_TEMP/dismantling-data"
+          mkdir -p "$DISMANTLING_DATA_DIR"
+          compose=(docker compose -f docker-compose.yaml -f deploy/compose.production.yaml)
+          trap '"${compose[@]}" down' EXIT
+          "${compose[@]}" up -d --build --wait --wait-timeout 90
+          test -s "$DISMANTLING_DATA_DIR/db.sqlite3"
+          curl --fail --silent --show-error http://127.0.0.1:18088/ > /dev/null
+
   deploy:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -46,6 +65,12 @@ jobs:
       group: dismantling-production
       cancel-in-progress: false
     steps:
+      - name: Check out the tested revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
@@ -62,24 +87,7 @@ jobs:
       - name: Deploy to kant VPS
         run: |
           set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
           ssh -T -i "$HOME/.ssh/dismantling_deploy" \
             -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            kant@176.117.78.212 'bash -se' <<'REMOTE'
-          cd /opt/apps/dismantling
-          set -euo pipefail
-          if [ ! -f .env ] || ! grep -Eq '^DJANGO_DEBUG=0$' .env; then
-            echo 'Production .env with DJANGO_DEBUG=0 is required.' >&2
-            exit 1
-          fi
-          if ! grep -Eq '^DJANGO_SECRET_KEY=.{32,}$' .env ||
-             grep -Eq '^DJANGO_SECRET_KEY=(django-insecure-|REPLACE_WITH_)' .env; then
-            echo 'Set a unique long DJANGO_SECRET_KEY in the production .env.' >&2
-            exit 1
-          fi
-          git fetch origin main
-          git switch main
-          git merge --ff-only FETCH_HEAD
-          docker compose config --quiet
-          docker compose up -d --build --wait --wait-timeout 180
-          docker compose ps
-          REMOTE
+            kant@176.117.78.212 python3 - "$GITHUB_SHA" < deploy/release.py

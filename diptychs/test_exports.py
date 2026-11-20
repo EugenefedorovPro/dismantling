@@ -6,9 +6,11 @@ from contextlib import closing
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 
+from .exports import export_editorial_texts
 from .models import AuthorBiography, Diptych, DocumentExcerpt, ProjectDescription
 
 
@@ -58,6 +60,7 @@ class TextExportTests(TestCase):
             "спичка читает пальцы\n**дымиться**",
             "Протокол КМДА",
             "https://example.org/protocol",
+            "Document language: uk",
             "Видатний письменник\nукраїнського походження",
             "Русская биография",
             "Українська біографія",
@@ -105,6 +108,23 @@ class TextExportTests(TestCase):
         ):
             with self.subTest(name=name):
                 self.assertEqual(self.client.get(reverse(name)).status_code, 302)
+
+
+class TextExportSnapshotTests(TransactionTestCase):
+    def test_all_editorial_selects_run_inside_one_transaction(self):
+        Diptych.objects.create(title="Poem", slug="poem", poem_markdown="Text")
+        in_transaction = []
+
+        def record_transaction_state(execute, sql, params, many, context):
+            if sql.startswith("SELECT"):
+                in_transaction.append(connection.in_atomic_block)
+            return execute(sql, params, many, context)
+
+        with connection.execute_wrapper(record_transaction_state):
+            export_editorial_texts()
+
+        self.assertGreater(len(in_transaction), 1)
+        self.assertTrue(all(in_transaction))
 
 
 class SqliteBackupTests(TransactionTestCase):

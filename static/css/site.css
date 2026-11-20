@@ -157,14 +157,16 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
   align-items: start;
 }
 
-.markdown-body { font-size: clamp(1rem, 1.3vw, 1.15rem); }
+.markdown-body { font-size: clamp(1rem, 1.3vw, 1.15rem); overflow-wrap: anywhere; }
 .markdown-body p { margin: 0 0 1.25em; }
 .markdown-body blockquote { margin: 0 0 1.25em; padding-left: 1.15rem; border-left: 1px solid var(--rule); }
 .markdown-body a { text-underline-offset: .15em; }
+.markdown-body img { max-inline-size: 100%; height: auto; }
+.markdown-body pre { overflow-x: auto; }
 .poem-body { line-height: 1.75; }
 .document + .document { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--rule); }
 .text-date, .document-source { margin-top: 2rem; color: var(--muted); font-size: .8rem; }
-.document-source a { color: inherit; }
+.document-source a { color: inherit; overflow-wrap: anywhere; }
 .empty-document { color: var(--muted); }
 
 @keyframes reveal {
@@ -181,7 +183,7 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
   .name-grid.is-mobile-list .index-name { font-size: clamp(1rem, 4.2vw, 1.3rem); }
   .index-name:nth-child(even) { justify-self: start; }
   .index-name:nth-child(4n + 3) { padding-left: 0; }
-  .diptych-grid { grid-template-columns: 1fr; gap: 3rem; }
+  .diptych-grid { grid-template-columns: minmax(0, 1fr); gap: 3rem; }
   .documents { border-top: 1px solid var(--rule); padding-top: 2.5rem; }
 }
 
