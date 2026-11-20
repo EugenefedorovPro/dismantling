@@ -34,10 +34,10 @@ In Django Admin, open **Diptychs**, create a record, enter a Latin URL slug,
 paste your Markdown poem, add one or more documentary excerpts (with URLs),
 and select **Is published**. The title page and diptych page update when saved.
 
-### Export texts or back up the database
+### Export texts and back up the database and archives
 
 Log in to the Django Admin **homepage** as a superuser. The **Project exports**
-section has two one-click downloads for the entire site:
+section has three one-click downloads for the site:
 
 - **Export all texts (.txt)**: a UTF-8 text file containing all poems (including
   unpublished drafts), document quotations and sources, author biographies,
@@ -45,8 +45,12 @@ section has two one-click downloads for the entire site:
 - **Backup database (.sqlite3)**: a consistent copy of the entire SQLite
   database, including accounts and other Django tables, made using SQLite's
   online backup API. Treat this file as sensitive and store it securely.
+- **Backup archive files (.zip)**: all files from `/data/archive-media`, including
+  unpublished source copies, with a SHA-256 manifest. This ZIP uses an
+  `archive-media/` folder so it can be restored beside `db.sqlite3`.
 
-Both downloads are restricted to superusers. Neither changes the live database.
+All three downloads are restricted to superusers. They do not change site data.
+For a complete backup, retain **both** the SQLite and archive ZIP downloads.
 
 ### Preserving original source documents
 
@@ -64,8 +68,10 @@ Only public archives appear beneath the quoted documents as:
 
 Archive files are stored separately from SQLite, in `/data/archive-media` when
 using Docker Compose. The **Backup database (.sqlite3)** button does **not**
-contain archived PDF, HTML, or image files. Back up both the SQLite database
-and `/data/archive-media` off the server.
+contain archived PDF, HTML, or image files. Download **Backup archive files
+(.zip)** alongside it and keep both files off the server. The archive backup
+checks recorded file sizes and SHA-256 hashes before completing, and refuses
+to produce an incomplete backup if a database-referenced file is missing.
 
 To prepare a collection from an editorial TXT export, run the optional capture
 helper on an internet-connected machine with Python, WeasyPrint and

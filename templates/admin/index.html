@@ -18,6 +18,10 @@
         <a class="export-link" href="{% url 'admin:diptychs_diptych_backup_sqlite' %}">Backup database (.sqlite3)</a>
         <span class="export-description">Complete SQLite backup, including accounts and other site data.</span>
       </div>
+      <div class="export-row">
+        <a class="export-link" href="{% url 'admin:diptychs_diptych_backup_archives' %}">Backup archive files (.zip)</a>
+        <span class="export-description">All preserved source documents from archive-media, with file checksums. Download alongside the SQLite backup.</span>
+      </div>
     </div>
   {% endif %}
   {{ block.super }}
