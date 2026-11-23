@@ -125,6 +125,51 @@ class IndexTests(TestCase):
         self.assertContains(response, 'class="index-name-text"', count=8)
         self.assertNotContains(response, "Черновик")
 
+    def test_index_uses_fixed_reading_order_and_appends_new_names(self):
+        titles = (
+            ("tolstoy", "Демонтаж: Л. Н. Толстой"),
+            ("gogol", "Демонтаж: Гоголь"),
+            ("chaikovsky", "Демонтаж: Чайковский"),
+            ("dostoevsky", "Демонтаж: Достоевский"),
+            ("bulgakov", "Демонтаж: Булгаков"),
+            ("ekster", "Демонтаж: Екстер"),
+            ("chukovsky", "Демонтаж: Чуковский"),
+            ("pushkin", "Демонтаж: Пушкин"),
+        )
+        for slug, title in titles:
+            Diptych.objects.create(
+                title=title, slug=slug, poem_markdown="Текст",
+                display_order=0, is_published=True,
+            )
+        Diptych.objects.create(
+            title="Демонтаж: Новое имя", slug="new", poem_markdown="Текст",
+            display_order=0, is_published=True,
+        )
+        response = self.client.get(reverse("index"))
+        page = response.content.decode()
+        expected = (
+            "pushkin", "chukovsky", "ekster", "bulgakov",
+            "dostoevsky", "chaikovsky", "gogol", "tolstoy", "new",
+        )
+        positions = [page.index(f'/diptych/{slug}/') for slug in expected]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_future_names_keep_admin_order(self):
+        for slug, order in (("later", 30), ("earlier", 10)):
+            Diptych.objects.create(
+                title=f"Демонтаж: {slug}", slug=slug,
+                poem_markdown="Текст", display_order=order, is_published=True,
+            )
+        page = self.client.get(reverse("index")).content.decode()
+        self.assertLess(page.index("/diptych/earlier/"), page.index("/diptych/later/"))
+
+    def test_hidden_names_are_not_shown_in_fixed_order(self):
+        Diptych.objects.create(
+            title="Демонтаж: Пушкин", slug="pushkin",
+            poem_markdown="Текст", is_published=False,
+        )
+        self.assertNotContains(self.client.get(reverse("index")), "Пушкин")
+
     def test_public_pages_stay_available_while_admin_is_paused(self):
         with TemporaryDirectory() as directory:
             backup = Path(directory) / "deploy.sqlite3"
