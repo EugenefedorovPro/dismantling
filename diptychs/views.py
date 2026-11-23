@@ -35,8 +35,35 @@ def translated_text(record, request):
     }
 
 
+# Literary reading order. New diptychs follow these eight in Admin display order.
+# Match names rather than database IDs so it works with independent local and
+# production SQLite databases and with existing Ukrainian/Russian title variants.
+READING_ORDER = (
+    ("пушкин",),
+    ("чуковск",),
+    ("цветаев", "екстер", "ekster"),
+    ("булгаков",),
+    ("достоевск",),
+    ("чайковск",),
+    ("гогол",),
+    ("толстой",),
+)
+
+
+def reading_order_key(diptych):
+    name = diptych.navigation_name.casefold()
+    for position, variants in enumerate(READING_ORDER):
+        if any(variant in name for variant in variants):
+            return (0, position, diptych.display_order, diptych.pk)
+    # Future names are never hidden or shuffled. The Admin order still applies.
+    return (1, diptych.display_order, diptych.pk)
+
+
 def index(request):
-    diptychs = Diptych.objects.filter(is_published=True)
+    diptychs = sorted(
+        Diptych.objects.filter(is_published=True),
+        key=reading_order_key,
+    )
     return render(request, "diptychs/index.html", {"diptychs": diptychs})
 
 
