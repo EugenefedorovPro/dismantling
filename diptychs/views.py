@@ -36,7 +36,9 @@ def translated_text(record, request):
 
 
 def index(request):
-    diptychs = Diptych.objects.filter(is_published=True)
+    # display_order is editable in Django Admin. Ties use the database ID
+    # to keep rendering predictable without hard-coding any literary names.
+    diptychs = Diptych.objects.filter(is_published=True).order_by("display_order", "pk")
     return render(request, "diptychs/index.html", {"diptychs": diptychs})
 
 

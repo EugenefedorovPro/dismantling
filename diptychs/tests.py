@@ -125,6 +125,60 @@ class IndexTests(TestCase):
         self.assertContains(response, 'class="index-name-text"', count=8)
         self.assertNotContains(response, "Черновик")
 
+    def test_index_follows_admin_display_order_for_any_names(self):
+        for slug, position in (
+            ("tolstoy", 80),
+            ("pushkin", 10),
+            ("gogol", 70),
+            ("chukovsky", 20),
+            ("new-author", 35),
+        ):
+            Diptych.objects.create(
+                title=f"Демонтаж: {slug}",
+                slug=slug,
+                poem_markdown="Текст",
+                display_order=position,
+                is_published=True,
+            )
+        page = self.client.get(reverse("index")).content.decode()
+        expected = ("pushkin", "chukovsky", "new-author", "gogol", "tolstoy")
+        positions = [page.index(f"/diptych/{slug}/") for slug in expected]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_changing_display_order_immediately_changes_homepage_order(self):
+        first = Diptych.objects.create(
+            title="Демонтаж: Пушкин", slug="pushkin",
+            poem_markdown="Текст", display_order=10, is_published=True,
+        )
+        second = Diptych.objects.create(
+            title="Демонтаж: Чуковский", slug="chukovsky",
+            poem_markdown="Текст", display_order=20, is_published=True,
+        )
+        initial = self.client.get(reverse("index")).content.decode()
+        self.assertLess(initial.index("/diptych/pushkin/"), initial.index("/diptych/chukovsky/"))
+
+        second.display_order = 5
+        second.save(update_fields=["display_order"])
+        changed = self.client.get(reverse("index")).content.decode()
+        self.assertLess(changed.index("/diptych/chukovsky/"), changed.index("/diptych/pushkin/"))
+        self.assertEqual(first.display_order, 10)
+
+    def test_equal_display_order_uses_stable_creation_order(self):
+        for slug in ("first", "second"):
+            Diptych.objects.create(
+                title=f"Демонтаж: {slug}", slug=slug,
+                poem_markdown="Текст", display_order=10, is_published=True,
+            )
+        page = self.client.get(reverse("index")).content.decode()
+        self.assertLess(page.index("/diptych/first/"), page.index("/diptych/second/"))
+
+    def test_unpublished_diptychs_remain_hidden(self):
+        Diptych.objects.create(
+            title="Демонтаж: Пушкин", slug="pushkin",
+            poem_markdown="Текст", display_order=1, is_published=False,
+        )
+        self.assertNotContains(self.client.get(reverse("index")), "Пушкин")
+
     def test_public_pages_stay_available_while_admin_is_paused(self):
         with TemporaryDirectory() as directory:
             backup = Path(directory) / "deploy.sqlite3"
